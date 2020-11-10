@@ -1,6 +1,6 @@
 <?php
 // WSDL del servicio
-$servicio = 'http://localhost:49653/WSPersonitas.svc?wsdl';
+$servicio = 'http://localhost:65405/setUpUsers.svc?wsdl';
 
 // Arreglo de parámetros
 $parametros = array();
@@ -8,7 +8,7 @@ $id = "9";
 $parametros['id'] = $id;
 
 // Se crea el cliente del servicio
-//$client = new soapclient($servicio, $parametros);
+$client = new soapclient($servicio, $parametros);
 print_r($parametros);
 
 // Se invoca el metodo que vamos a probar
@@ -16,8 +16,8 @@ print_r($parametros);
     El estilo de comunicación es "document" y tipo de uso "literal", los parametros deben ir en un arreglo
     Respuesta = objeto con atributos, contenido en otro objeto
  **/
-if (isset($client)) {
-    $result = $client->GetPersonita($parametros);
+#if (isset($client)) {
+    $result = $client->updateUser($parametros);
 
     //Para observar el Dump de lo que regresa, es puramente de debug
     echo 'Valor dump del servicio:<br>';
@@ -38,7 +38,7 @@ if (isset($client)) {
     //$data = !empty($HTTP_RAW_POST_DATA)?$HTTP_RAW_POST_DATA:'';    
     //$server->service($data);
     $client->service(file_get_contents("php://input"));
-}
+#}
 //Definicion de metodos
 function updatePassword($user, $pass, $newPass)
 {
