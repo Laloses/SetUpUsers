@@ -30,7 +30,6 @@ namespace setUpUsers
         public Respuesta updateUser(string user, string pass, string oldUser, string newUser, string newPass)
         {
             firebaseClient = new FireSharp.FirebaseClient(config);
-            Respuesta resp = new Respuesta();
 
             string resVal = validarCredenciales(user, pass); //Validacion del user - pass
             
@@ -44,58 +43,108 @@ namespace setUpUsers
             else
             {
                 //Validacion del usuario de acceso (RH)
-                dynamic resAccessUser = JsonConvert.DeserializeObject( firebaseClient.Get("usuarios_info/" + user.ToString()).Body );
+                dynamic resAccessUser = JsonConvert.DeserializeObject( firebaseClient.Get("usuarios_info/" + user).Body );
                 string rol = resAccessUser["rol"];
                 if(rol != "RH")
                     return new Respuesta() { code = "502", message = getRespuesta(502), status = "Deber ser de recursos humanos para realizar esta acción."};
-                else
-                {
-                    //Si no cumple con los requisitos de la nueva contraseña
-                    if (newPass.Length < 8 || !ValidatePassword(newPass) )
-                        return new Respuesta() { code = "302", message = getRespuesta(302), status = "La nueva contraseña no es válida." };
-                    else
-                    {
 
-                        //Verificar que existe el usuario a modificar
-                        dynamic existOldUser = JsonConvert.DeserializeObject( firebaseClient.Get("usuarios/" + oldUser.ToString()).Body );
-                        if(existOldUser == "" || existOldUser == null)
-                            return new Respuesta() { code = "503", message = getRespuesta(503), status = "Verifica que exista el usuario a modificar." };
-                        else
-                        {
-                            //Encriptar nueva contraseña
-                            MD5 md5 = MD5CryptoServiceProvider.Create();
-                            ASCIIEncoding encoding = new ASCIIEncoding();
-                            byte[] stream = null;
-                            StringBuilder sb = new StringBuilder();
-                            stream = md5.ComputeHash(encoding.GetBytes(newPass));
-                            for (int i = 0; i < stream.Length; i++) sb.AppendFormat("{0:x2}", stream[i]);
-                            newPass = sb.ToString();
+                //Si no cumple con los requisitos de la nueva contraseña
+                if (newPass.Length < 8 || !ValidatePassword(newPass) )
+                    return new Respuesta() { code = "302", message = getRespuesta(302), status = "La nueva contraseña no es válida." };
 
-                            //Actualizar nombre de usuario y contraseña del documento /usuarios.json
-                            firebaseClient.Delete("usuarios/" + oldUser);
-                            firebaseClient.Set("usuarios/"+newUser, newPass);
+                //Verificar que el nuevo usuario no tenga espacios, lleve numeros y letras
+                if (!ValidatePassword(newUser))
+                    return new Respuesta() { code = "307", message = getRespuesta(307), status = "El nuevo usuario no es válido." };
 
-                            //Si se inserto correctamente
-                            return new Respuesta() { code = "400", message = getRespuesta(400), status = "Actualizacion de credenciales completa." };
-                        }
-                    }
-                }
+                //Verificar que existe el usuario a modificar
+                dynamic existOldUser = JsonConvert.DeserializeObject( firebaseClient.Get("usuarios/" + oldUser.ToString()).Body );
+                if(existOldUser == "" || existOldUser == null)
+                return new Respuesta() { code = "503", message = getRespuesta(503), status = "Verifica que exista el usuario a modificar." };
+
+                //Encriptar nueva contraseña
+                MD5 md5 = MD5CryptoServiceProvider.Create();
+                ASCIIEncoding encoding = new ASCIIEncoding();
+                byte[] stream = null;
+                StringBuilder sb = new StringBuilder();
+                stream = md5.ComputeHash(encoding.GetBytes(newPass));
+                for (int i = 0; i < stream.Length; i++) sb.AppendFormat("{0:x2}", stream[i]);
+                newPass = sb.ToString();
+
+                //Actualizar nombre de usuario y contraseña del documento /usuarios.json
+                firebaseClient.Delete("usuarios/" + oldUser);
+                firebaseClient.Set("usuarios/"+newUser, newPass);
+
+                //Si se inserto correctamente
+                return new Respuesta() { code = "400", message = getRespuesta(400), status = "Actualizacion de credenciales completa." };
             }
 
             return new Respuesta() { code = "999", message = getRespuesta(999), status = "Llegó al final del proceso sin haber realizado una acción." };
         }
 
-        public Respuesta setUser(string user, string pass, string searchedUser, string userInfoJSON)
+        public Respuesta setUserInfo(string user, string pass, string searchedUser, string userInfoJSON)
         {
             firebaseClient = new FireSharp.FirebaseClient(config);
-            Respuesta resp = new Respuesta();
+
+            string resVal = validarCredenciales(user, pass); //Validacion del user - pass
+
+            if (resVal != "ok")
+            {
+                if (resVal == "user")
+                    return new Respuesta() { code = "500", message = getRespuesta(500), data = "", status = "El nombre de usuario de tu cuenta es incorrecto." };
+                if (resVal == "pass")
+                    return new Respuesta() { code = "302", message = getRespuesta(302), data = "", status = "La contraseña de tu cuenta es incorrecta." };
+            }
+            else
+            {
+                //Validacion del usuario de acceso (RH)
+                dynamic resAccessUser = JsonConvert.DeserializeObject(firebaseClient.Get("usuarios_info/" + user).Body);
+                string rol = resAccessUser["rol"];
+                if (rol != "RH")
+                    return new Respuesta() { code = "502", message = getRespuesta(502), data = "", status = "Deber ser de recursos humanos para realizar esta acción." };
+
+                //No existencia del usuario en el documento /usuarios
+                if (!existeUser(searchedUser))
+                    return new Respuesta() { code = "503", message = getRespuesta(503), data = "", status = "No existe el usuario "+searchedUser+" en el documento /usuarios" };
+
+                //Existencia previa de los datos del Usuario buscado
+                if (existeUserInfo(searchedUser))
+                    return new Respuesta() { code = "504", message = getRespuesta(504), data = "", status = "Ya existen datos del usuario \"" + searchedUser + "\" en el documento /usuarios_info" };
+
+                //Sintaxis del JSON.
+                try
+                {
+                    dynamic json = JsonConvert.DeserializeObject(userInfoJSON);
+
+                    //Completitud del JSON.
+                    if (new[]{ "correo", "nombre", "rol", "telefono" }.Any(parametro => json[parametro] == null))
+                        return new Respuesta() { code = "306", message = getRespuesta(306), data = "", status = "Revisa los datos faltantes en el json." };
+
+                    //Insertar datos en documento usuarios_info
+                    var data = new
+                    {
+                        correo = (string)json["correo"],
+                        nombre = (string)json["nombre"],
+                        rol = (string)json["rol"],
+                        telefono = (string)json["telefono"]
+                    };
+
+                    firebaseClient.Set("usuarios_info/"+searchedUser, data);
+
+                    //Si se inserto correctamente
+                    return new Respuesta() { code = "401", message = getRespuesta(401), data ="", status = "Inserción de datos completa." };
+
+                } catch(Exception error)
+                {
+                    return new Respuesta() { code = "305", message = getRespuesta(305), data = "", status = "Verifica la sintaxis del json que estás ingresando." };
+                }
 
 
-            resp.code = "10";
-            return resp;
+            }
+
+            return new Respuesta() { code = "999", message = getRespuesta(999), status = "Llegó al final del proceso sin haber realizado alguna acción." };
         }
 
-        public Respuesta setUserInfo(string user, string pass, string searchedUser, string userInfoJSON)
+        public Respuesta setUser(string user, string pass, string searchedUser, string userInfoJSON)
         {
             firebaseClient = new FireSharp.FirebaseClient(config);
             Respuesta resp = new Respuesta();
@@ -148,6 +197,13 @@ namespace setUpUsers
             int validConditions = 0;
             foreach (char c in passWord)
             {
+                if (c == ' ')
+                {
+                    return false;
+                }
+            }
+            foreach (char c in passWord)
+            {
                 if (c >= 'a' && c <= 'z')
                 {
                     validConditions++;
@@ -188,6 +244,28 @@ namespace setUpUsers
         {
             firebaseClient = new FireSharp.FirebaseClient(config);
             return firebaseClient.Get("respuestas/" + code.ToString()).Body.Replace("\"","");
+        }
+
+        private bool existeUser(string user)
+        {
+            firebaseClient = new FireSharp.FirebaseClient(config);
+            dynamic existeUser = JsonConvert.DeserializeObject(firebaseClient.Get("usuarios/" + user).Body);
+
+            if (existeUser == null)
+                return false;
+            else
+                return true;
+        }
+
+        private bool existeUserInfo(string user)
+        {
+            firebaseClient = new FireSharp.FirebaseClient(config);
+            dynamic existeUser = JsonConvert.DeserializeObject(firebaseClient.Get("usuarios_info/" + user).Body);
+
+            if (existeUser == null)
+                return false;
+            else
+                return true;
         }
     }
 }
