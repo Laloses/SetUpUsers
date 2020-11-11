@@ -37,9 +37,9 @@ namespace setUpUsers
             if (resVal != "ok")
             {
                 if(resVal=="user")
-                    return new Respuesta() { code = "500", message = getRespuesta(500), status = "El nombre de usuario es incorrecto." };
+                    return new Respuesta() { code = "500", message = getRespuesta(500), status = "El nombre de usuario de tu cuenta es incorrecto." };
                 if(resVal=="pass")
-                    return new Respuesta() { code = "302", message = getRespuesta(302), status = "No se ha podido validar tu contraseña." };
+                    return new Respuesta() { code = "302", message = getRespuesta(302), status = "La contraseña de tu cuenta es incorrecta." };
             }
             else
             {
