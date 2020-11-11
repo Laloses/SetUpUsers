@@ -1,95 +1,33 @@
 <?php
 // WSDL del servicio
 $servicio = 'http://localhost:65405/setUpUsers.svc?wsdl';
-
 // Arreglo de parámetros
 $parametros = array();
-$id = "9";
-$parametros['id'] = $id;
-
+$parametros['user'] = "pruebas10";
+$parametros['pass'] = "12345678a";
+$parametros['oldUser'] = "pruebas1";
+$parametros['newUser'] = "pruebas10";
+$parametros['newPass'] = "12345678a";
 // Se crea el cliente del servicio
-$client = new soapclient($servicio, $parametros);
-print_r($parametros);
-
+$client = new soapclient($servicio);
 // Se invoca el metodo que vamos a probar
 /**
     El estilo de comunicación es "document" y tipo de uso "literal", los parametros deben ir en un arreglo
     Respuesta = objeto con atributos, contenido en otro objeto
  **/
-#if (isset($client)) {
+try {
+    //print_r($parametros);
     $result = $client->updateUser($parametros);
 
     //Para observar el Dump de lo que regresa, es puramente de debug
-    echo 'Valor dump del servicio:<br>';
-    var_dump($result);
-    echo '<br>';
-
     echo 'Valor echo del servicio:<br>';
-    if (!isset($result->GetPersonitaResult->Error)) {
-        echo $result->GetPersonitaResult->Mensaje . '<br>';
-        echo $result->GetPersonitaResult->Nombre . '<br>';
-        echo $result->GetPersonitaResult->Edad . '<br>';
-    } else {
-        echo $result->GetPersonitaResult->Error . '<br>';
-    }
+        echo $result->updateUserResult->code . '<br>';
+        echo $result->updateUserResult->message . '<br>';
+        echo $result->updateUserResult->status . '<br>';
     echo '<br>';
-
-    // Exposicion del servicio (WSDL) php < v7.2
-    //$data = !empty($HTTP_RAW_POST_DATA)?$HTTP_RAW_POST_DATA:'';    
-    //$server->service($data);
-    $client->service(file_get_contents("php://input"));
-#}
-//Definicion de metodos
-function updatePassword($user, $pass, $newPass)
-{
-
-    $resVal = validarCred($user, $pass); //Validacion del user - pass
-    //de88e3e4ab202d87754078cbb2df6063
-
-    if ($resVal != "ok")
-        return enviarErrorCred($resVal, "array", "");
-    else {
-        //Validacion de la nueva contraseña 
-        if (count_chars($newPass) < 8 || !preg_match_all('/(?=\S*[0-9])[a-zA-Z0-9]{8,}/', $newPass)) {
-            //Si no cumple con los requisitos de la nueva contraseña
-            $respuesta = getRespuesta(302);
-            $respF = array(
-                'code' => 302,
-                'message' => $respuesta,
-                'status' => 'fail'
-            );
-            return $respF;
-        } else { //Si esta bien la nueva contraseña
-            require_once("actualizarPassword.php");
-
-            $data = array(
-                $user => utf8_encode(md5($newPass))
-            );
-
-            $res = actualizarPassword($data);
-
-            //Si se inserto correctamente
-            if ($res == "ok") {
-                $respuesta = getRespuesta(202);
-                $respF = array(
-                    'code' => 202,
-                    'message' => $respuesta,
-                    'status' => 'sucess'
-                );
-                return $respF;
-            } else { //Cuando hay error al insertar
-                $respuesta = getRespuesta(999);
-                $respF = array(
-                    'code' => 999,
-                    'message' => $respuesta,
-                    'status' => $res
-                );
-                return $respF;
-            }
-        }
-    }
+} catch (\Throwable $th) {
+    echo "<center>". str_replace("host","server",$th->getMessage()) ."</center>";
 }
-
 //Validacion del producto a añadir
 function validarJSONProd($JSON, $movimiento)
 {
@@ -139,7 +77,6 @@ function validarJSONProd($JSON, $movimiento)
         }
     }
 }
-
 //Verifica ques esten completos los datos del json
 function faltanDatos($keys, $movimiento)
 {
@@ -172,106 +109,6 @@ function faltanDatos($keys, $movimiento)
             return $flag;
     }
 }
-
-//Verifica si existe o no un ISBN
-function existeISBN($ISBN)
-{
-    require_once("obtenerdatos.php");
-    //Ya existe el dato
-    if (obtenerDatos("", $ISBN) != null) {
-        return true;
-    } else
-        return false;
-}
-
-//Para verificar las credenciales
-function validarCred($usuario, $password)
-{
-    $url = "https://prueba-8e491.firebaseio.com/usuarios.json";
-
-    $ch =  curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: text/plain'));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-    $response = curl_exec($ch);
-    $usuarios = json_decode($response);
-
-    curl_close($ch);
-
-    if (!array_key_exists($usuario, $usuarios))
-        return "user";
-    if ($usuarios->$usuario == md5($password))
-        return "ok";
-    else
-        return "pass";
-}
-
-//respuesta de Errores
-function enviarErrorCred($resVal, $tipoDato, $nomFunc)
-{ //Tipo dato ayuda para regresar un tipo complejo o uno simple del servidor
-    global $respuestas;
-    $resp = array(
-        'code' => "",
-        'message' => "",
-        'data' => '',
-        'status' => 'error'
-    );
-    if ($tipoDato == "string") {
-        switch ($resVal) {
-            case "user":
-                return $respuestas[500];
-            case "pass":
-                return $respuestas[501];
-            default:
-                return $respuestas[999];
-        }
-    } else { //Si es un array
-        if ($nomFunc == "getDetails") array_push($resp, ["oferta" => "true"]);
-
-        switch ($resVal) {
-            case "user":
-                $resp["code"] = 500;
-                $resp["message"] = getRespuesta(500);
-                return $resp;
-            case "pass":
-                $resp["code"] = 501;
-                $resp["message"] = getRespuesta(501);
-                return $resp;
-            default:
-                $resp["code"] = 999;
-                $resp["message"] = getRespuesta(999);
-                return $resp;
-        }
-    }
-}
-
-//Sacar las contraseñas de la DB
-function getRespuesta($cogidoRes)
-{
-    require_once("obtenerRespuesta.php");
-    $res = obtenerRes($cogidoRes);
-    return $res;
-}
-
-//Obtiene la hora con el tiempo de zona de mexico
-function getHora($format)
-{
-    date_default_timezone_set("America/Mexico_City");
-    return date($format);
-}
-
-#datos de los json
-#'Categoria' => 'xsd:string',
-#'ISBN' => 'xsd:string',
-#'Autor' => 'xsd:string',
-#'Nombre' => 'xsd:string',
-#'Editorial' => 'xsd:string',
-#'Año' => 'xsd:string',
-#'Costo' => 'xsd:string'
-
 ?>
 <html>
 
@@ -629,32 +466,32 @@ function getHora($format)
                                     document.getElementById("btn_ope").removeAttribute("disabled");
                                 }
                             }
-                            xhttp.open("GET", " ", true);
+                            xhttp.open("GET", "", true);
                             xhttp.send(null);
                         }
                     </script>
                     <h3>Operación</h3>
                     <div class="row cf">
                         <div class="four col">
-                            <input type="radio" name="r1" id="r1">
+                            <input type="radio" name="operacion" id="r1">
                             <label for="r1" onClick='seleccionarOperacion("setUser")'>
                                 <h4>Insertar usuario</h4>
                             </label>
                         </div>
                         <div class="four col">
-                            <input type="radio" name="r1" id="r2">
+                            <input type="radio" name="operacion" id="r2">
                             <label for="r2" onClick='seleccionarOperacion("updateUser")'>
                                 <h4>Actualizar usuario</h4>
                             </label>
                         </div>
                         <div class="four col">
-                            <input type="radio" name="r1" id="r3">
+                            <input type="radio" name="operacion" id="r3">
                             <label for="r3" onClick='seleccionarOperacion("setUserInfo")'>
                                 <h4>Insertar datos de usuario</h4>
                             </label>
                         </div>
                         <div class="four col">
-                            <input type="radio" name="r1" id="r4">
+                            <input type="radio" name="operacion" id="r4">
                             <label for="r4" onClick='seleccionarOperacion("updateUserInfo")'>
                                 <h4>Actualizar datos de usuario</h4>
                             </label>
@@ -665,14 +502,14 @@ function getHora($format)
                 <fieldset class="section">
                     <h3>Datos a insertar</h3>
                     <div id="inputs">
-                        <input type="text" name="user" id="user" placeholder="Usuario">
-                        <input type="text" name="pass" id="pass" placeholder="Contraseña">
-                        <input type="text" name="newUser" id="newUser" placeholder="Usuario nuevo">
-                        <input type="text" name="newPass" id="newPass" placeholder="Contraseña nueva">
-                        <input type="text" name="searchedUser" id="searchedUser" placeholder="Usuario buscado">
-                        <input type="text" name="userInfoJSON" id="userInfoJSON" placeholder="Información JSON del usuario">
+                        <input type="text" name="user" id="user" placeholder="Usuario" onchange="validateSection(this.parent)">
+                        <input type="text" name="pass" id="pass" placeholder="Contraseña" onchange="validateSection(this.parent)">
+                        <input type="text" name="newUser" id="newUser" placeholder="Usuario nuevo" onchange="validateSection(this.parent)">
+                        <input type="text" name="newPass" id="newPass" placeholder="Contraseña nueva" onchange="validateSection(this.parent)">
+                        <input type="text" name="searchedUser" id="searchedUser" placeholder="Usuario buscado" onchange="validateSection(this.parent)">
+                        <input type="text" name="userInfoJSON" id="userInfoJSON" placeholder="Información JSON del usuario" onchange="validateSection(this.parent)">
                     </div>
-                    <button class="button button-disabled" onclick="validateSection(this.previousElementSibling)" disabled>Next</button>
+                    <button class="button button-disabled" onclick="enviarDatos()" disabled>Next</button>
                     <script>
                         function validateSection(nodoPadre){
                             let inputs = nodoPadre.querySelectorAll("input")
@@ -691,12 +528,19 @@ function getHora($format)
                                 btn.removeAttribute("disabled");
                             }
                         }
-                        let inputs = document.getElementById("inputs").querySelectorAll("input")
-                        inputs.forEach(input =>{
-                            input.onchange = function(){
-                                validateSection(document.getElementById("inputs"))
-                            }
-                        })
+                        function enviarDatos(){
+                            var xhttp = getXMLHttpRequest();
+                            xhttp.onreadystatechange = function(){
+                                if (this.readyState == 4 && this.status == 200){
+                                    //Dependiendo la operacion seleccionada
+                                    switch()
+                                }
+                            };
+
+                            xhttp.open("POST", "consultarBD.php", true);
+                            xhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                            xhttp.send("nombre="+document.forms[0]["nombre"].value);
+                        }
                     </script>
                 </fieldset>
                 <fieldset class="section">
