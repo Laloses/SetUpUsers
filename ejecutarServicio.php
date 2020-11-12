@@ -49,9 +49,41 @@ if(isset($_POST["operacion"])){
                 echo json_encode( array("error" => "<center>". str_replace("host","server",$th->getMessage()) ."</center>") );
             }
             break;
-        case "updateUserInfo":
-            break;
         case "setUser":
+            $parametros['user'] = $_POST["user"];
+            $parametros['pass'] = $_POST["pass"];
+            $parametros['searchedUser'] = $_POST["searchedUser"];
+            $parametros['userInfoJSON'] = $_POST["userInfoJSON"];
+            try {
+                $result = $client->setUser($parametros);
+                $return = array(
+                    "code" => $result->setUserResult->code,
+                    "message" => $result->setUserResult->message,
+                    "data" => $result->setUserResult->data,
+                    "status" => $result->setUserResult->status
+                );
+                echo json_encode($return);
+            } catch (\Throwable $th) {
+                echo json_encode( array("error" => "<center>". str_replace("host","server",$th->getMessage()) ."</center>") );
+            }
+            break;
+        case "updateUserInfo":
+            $parametros['user'] = $_POST["user"];
+            $parametros['pass'] = $_POST["pass"];
+            $parametros['searchedUser'] = $_POST["searchedUser"];
+            $parametros['userInfoJSON'] = $_POST["userInfoJSON"];
+            try {
+                $result = $client->updateUserInfo($parametros);
+                $return = array(
+                    "code" => $result->updateUserInfoResult->code,
+                    "message" => $result->updateUserInfoResult->message,
+                    "data" => $result->updateUserInfoResult->data,
+                    "status" => $result->updateUserInfoResult->status
+                );
+                echo json_encode($return);
+            } catch (\Throwable $th) {
+                echo json_encode( array("error" => "<center>". str_replace("host","server",$th->getMessage()) ."</center>") );
+            }
             break;
     }
 }

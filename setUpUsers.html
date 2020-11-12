@@ -438,7 +438,7 @@
 
                             xhttp.open("POST", "ejecutarServicio.php", true);
                             //Dentro de data van todos los inputs, incluyendo operacion, que nos dice qué metodo de servicio ejecutar
-                            let data = new FormData(document.getElementById("miForm1")) //Es el unico form del documento
+                            let data = new FormData(document.forms[0]) //Es el unico form del documento
                             console.log(data);
                             xhttp.send(data);
                         }

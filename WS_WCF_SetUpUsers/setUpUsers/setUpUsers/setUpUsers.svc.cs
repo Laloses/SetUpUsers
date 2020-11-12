@@ -131,7 +131,7 @@ namespace setUpUsers
                     firebaseClient.Set("usuarios_info/"+searchedUser, data);
 
                     //Si se inserto correctamente
-                    return new Respuesta() { code = "401", message = getRespuesta(401), data ="", status = "Inserción de datos completa." };
+                    return new Respuesta() { code = "401", message = getRespuesta(401), data = DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"), status = "Inserción de datos completa." };
 
                 } catch(Exception error)
                 {
@@ -147,21 +147,123 @@ namespace setUpUsers
         public Respuesta setUser(string user, string pass, string searchedUser, string userInfoJSON)
         {
             firebaseClient = new FireSharp.FirebaseClient(config);
-            Respuesta resp = new Respuesta();
+
+            string resVal = validarCredenciales(user, pass); //Validacion del user - pass
+
+            if (resVal != "ok")
+            {
+                if (resVal == "user")
+                    return new Respuesta() { code = "500", message = getRespuesta(500), data = "", status = "El nombre de usuario de tu cuenta es incorrecto." };
+                if (resVal == "pass")
+                    return new Respuesta() { code = "302", message = getRespuesta(302), data = "", status = "La contraseña de tu cuenta es incorrecta." };
+            }
+            else
+            {
+                //Validacion del usuario de acceso (RH)
+                dynamic resAccessUser = JsonConvert.DeserializeObject(firebaseClient.Get("usuarios_info/" + user).Body);
+                string rol = resAccessUser["rol"];
+                if (rol != "RH")
+                    return new Respuesta() { code = "502", message = getRespuesta(502), data = "", status = "Deber ser de recursos humanos para realizar esta acción." };
+
+                //No existencia del usuario en el documento /usuarios
+                if (existeUser(searchedUser))
+                    return new Respuesta() { code = "504", message = getRespuesta(504), data = "", status = "Ya existe el usuario " + searchedUser + " en el documento /usuarios" };
+
+                //Sintaxis del JSON.
+                try
+                {
+                    dynamic json = JsonConvert.DeserializeObject(userInfoJSON);
+
+                    //Completitud del JSON.
+                    if ( json[searchedUser] == null)
+                        return new Respuesta() { code = "306", message = getRespuesta(306), data = "", status = "Revisa los datos faltantes en el json." };
+
+                    //Encriptar nueva contraseña
+                    MD5 md5 = MD5CryptoServiceProvider.Create();
+                    ASCIIEncoding encoding = new ASCIIEncoding();
+                    byte[] stream = null;
+                    StringBuilder sb = new StringBuilder();
+                    stream = md5.ComputeHash(encoding.GetBytes((string)json[searchedUser]));
+                    for (int i = 0; i < stream.Length; i++) sb.AppendFormat("{0:x2}", stream[i]);
+                    string password = sb.ToString();
+
+                    //Insertar datos en documento usuarios_info
+                    firebaseClient.Set("usuarios/" + searchedUser, password);
+
+                    //Si se inserto correctamente
+                    return new Respuesta() { code = "402", message = getRespuesta(402), data = DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"), status = "Inserción de datos completa." };
+
+                }
+                catch (Exception error)
+                {
+                    return new Respuesta() { code = "305", message = getRespuesta(305), data = "", status = "Verifica la sintaxis del json que estás ingresando." };
+                }
 
 
-            resp.code = "10";
-            return resp;
+            }
+
+            return new Respuesta() { code = "999", message = getRespuesta(999), status = "Llegó al final del proceso sin haber realizado alguna acción." };
         }
 
         public Respuesta updateUserInfo(string user, string pass, string searchedUser, string userInfoJSON)
         {
             firebaseClient = new FireSharp.FirebaseClient(config);
-            Respuesta resp = new Respuesta();
+
+            string resVal = validarCredenciales(user, pass); //Validacion del user - pass
+
+            if (resVal != "ok")
+            {
+                if (resVal == "user")
+                    return new Respuesta() { code = "500", message = getRespuesta(500), data = "", status = "El nombre de usuario de tu cuenta es incorrecto." };
+                if (resVal == "pass")
+                    return new Respuesta() { code = "302", message = getRespuesta(302), data = "", status = "La contraseña de tu cuenta es incorrecta." };
+            }
+            else
+            {
+                //Validacion del usuario de acceso (RH)
+                dynamic resAccessUser = JsonConvert.DeserializeObject(firebaseClient.Get("usuarios_info/" + user).Body);
+                string rol = resAccessUser["rol"];
+                if (rol != "RH")
+                    return new Respuesta() { code = "502", message = getRespuesta(502), data = "", status = "Deber ser de recursos humanos para realizar esta acción." };
+
+                //No existencia del usuario en el documento /usuarios
+                if (existeUser(searchedUser))
+                    return new Respuesta() { code = "504", message = getRespuesta(504), data = "", status = "Ya existe el usuario " + searchedUser + " en el documento /usuarios" };
+
+                //Sintaxis del JSON.
+                try
+                {
+                    dynamic json = JsonConvert.DeserializeObject(userInfoJSON);
+
+                    //Completitud del JSON.
+                    if (json[searchedUser] == null)
+                        return new Respuesta() { code = "306", message = getRespuesta(306), data = "", status = "Revisa los datos faltantes en el json." };
+
+                    //Encriptar nueva contraseña
+                    MD5 md5 = MD5CryptoServiceProvider.Create();
+                    ASCIIEncoding encoding = new ASCIIEncoding();
+                    byte[] stream = null;
+                    StringBuilder sb = new StringBuilder();
+                    stream = md5.ComputeHash(encoding.GetBytes((string)json[searchedUser]));
+                    for (int i = 0; i < stream.Length; i++) sb.AppendFormat("{0:x2}", stream[i]);
+                    string password = sb.ToString();
+
+                    //Insertar datos en documento usuarios_info
+                    firebaseClient.Set("usuarios/" + searchedUser, password);
+
+                    //Si se inserto correctamente
+                    return new Respuesta() { code = "402", message = getRespuesta(402), data = DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"), status = "Inserción de datos completa." };
+
+                }
+                catch (Exception error)
+                {
+                    return new Respuesta() { code = "305", message = getRespuesta(305), data = "", status = "Verifica la sintaxis del json que estás ingresando." };
+                }
 
 
-            resp.code = "10";
-            return resp;
+            }
+
+            return new Respuesta() { code = "999", message = getRespuesta(999), status = "Llegó al final del proceso sin haber realizado alguna acción." };
         }
         
         private string validarCredenciales(string usuario, string contraseña)
