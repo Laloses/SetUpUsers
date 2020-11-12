@@ -21,8 +21,8 @@ namespace setUpUsers
     {
         IFirebaseConfig config = new FirebaseConfig
         {
-            AuthSecret = "3nnFWYwLeCe1LGAQprH0kqjm2SnByLWxYMYhoZDP",
-            BasePath = "https://prueba-8e491.firebaseio.com/"
+            AuthSecret = "",
+            BasePath = ""
         };
 
         IFirebaseClient firebaseClient;
