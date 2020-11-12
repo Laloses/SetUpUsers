@@ -168,7 +168,7 @@ namespace setUpUsers
                 if (existeUser(searchedUser))
                     return new Respuesta() { code = "504", message = getRespuesta(504), data = "", status = "Ya existe el usuario " + searchedUser + " en el documento /usuarios" };
 
-                //Sintaxis del JSON.
+                //Sintaxis del JSON
                 try
                 {
                     dynamic json = JsonConvert.DeserializeObject(userInfoJSON);
@@ -251,7 +251,7 @@ namespace setUpUsers
                         rol = (string)json["rol"],
                         telefono = (string)json["telefono"]
                     };
-                    firebaseClient.Set("usuarios/" + searchedUser, data);
+                    firebaseClient.Set("usuarios_info/" + searchedUser, data);
 
                     //Si se inserto correctamente
                     return new Respuesta() { code = "403", message = getRespuesta(403), data = DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"), status = "Inserción de datos completa." };

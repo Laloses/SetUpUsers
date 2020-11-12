@@ -56,13 +56,12 @@ if(isset($_POST["operacion"])){
             $parametros['userInfoJSON'] = $_POST["userInfoJSON"];
             try {
                 $result = $client->setUser($parametros);
-                $return = array(
+                echo json_encode( array(
                     "code" => $result->setUserResult->code,
                     "message" => $result->setUserResult->message,
                     "data" => $result->setUserResult->data,
                     "status" => $result->setUserResult->status
-                );
-                echo json_encode($return);
+                ) );
             } catch (\Throwable $th) {
                 echo json_encode( array("error" => "<center>". str_replace("host","server",$th->getMessage()) ."</center>") );
             }
